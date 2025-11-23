@@ -40,7 +40,7 @@ def load_data():
 # --- Main App ---
 def main():
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Model Analysis"])
+    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor", "Model Analysis"])
 
     tp = load_model_and_predictor()
     data = load_data()
