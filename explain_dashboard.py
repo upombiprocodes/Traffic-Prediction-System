@@ -471,10 +471,32 @@ def main():
             stop_btn = st.button("Stop")
             
             while not stop_btn:
-                # Default simulated values
-                new_vol = int(np.random.normal(1500, 300))
-                new_speed = int(np.random.normal(45, 10))
-                active_incidents = int(np.random.choice([0, 1, 2], p=[0.7, 0.2, 0.1]))
+                # Default simulated values (Aligned with Model)
+                # We construct a single-row DataFrame for the current moment
+                now = datetime.now()
+                sim_input = pd.DataFrame({
+                    "hour": [now.hour],
+                    "day_of_week": [now.weekday()],
+                    "weather": [st.session_state.get("f_weather", 1)], 
+                    "lat": [lat],
+                    "lon": [lon],
+                    "event": [0],
+                    "wind": [st.session_state.get("f_wind", 10)],
+                    "precip": [st.session_state.get("f_precip", 0.0)],
+                    "visibility": [st.session_state.get("f_vis", 10)],
+                    "pollution": [20]
+                })
+                
+                # Get model prediction as baseline
+                try:
+                    base_vol = tp.predict(sim_input)[0]
+                except:
+                    base_vol = 1500 # Fallback
+                
+                # Add random noise to make it look "live"
+                new_vol = int(np.random.normal(base_vol, 50))
+                new_speed = int(np.random.normal(45, 5))
+                active_incidents = int(np.random.choice([0, 1], p=[0.9, 0.1]))
                 status = "Normal"
                 
                 # Fetch Real Data if Key is present
@@ -484,7 +506,8 @@ def main():
                         new_speed = real_data['current_speed']
                         # Estimate volume from congestion (inverse relationship approx)
                         congestion = real_data['congestion_level']
-                        new_vol = int(500 + (congestion * 20)) # Rough proxy
+                        # Standardized Formula: 500 base + 25 per % congestion
+                        new_vol = int(500 + (congestion * 25)) 
                         
                         if congestion > 50: status = "Congested"
                         elif congestion < 10: status = "Free Flow"
@@ -493,13 +516,13 @@ def main():
                         # Incidents not in this specific endpoint, keep simulated or 0
                         active_incidents = 0 
                 else:
-                    # Simulation logic
+                    # Simulation logic based on Model Volume
                     if new_vol > 2000: status = "Congested"
                     elif new_vol < 500: status = "Free Flow"
 
                 # Update metrics
-                metric_vol.metric("Volume (Est)", f"{new_vol} veh/hr", delta=f"{np.random.randint(-50, 50)}")
-                metric_speed.metric("Avg Speed", f"{new_speed} km/h", delta=f"{np.random.randint(-5, 5)}")
+                metric_vol.metric("Volume (Est)", f"{new_vol} veh/hr", delta=f"{np.random.randint(-20, 20)}")
+                metric_speed.metric("Avg Speed", f"{new_speed} km/h", delta=f"{np.random.randint(-2, 2)}")
                 metric_incidents.metric("Active Incidents", f"{active_incidents}", delta_color="inverse")
                 
                 if status == "Congested":
