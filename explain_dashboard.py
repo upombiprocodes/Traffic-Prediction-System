@@ -57,6 +57,7 @@ def main():
     from weather_integration import fetch_current_weather
     from tomtom_integration import fetch_real_time_incidents
     from datetime import datetime
+    from streamlit_geolocation import streamlit_geolocation
 
     if page == "Traffic Forecast":
         st.title("🚦 Real-time Traffic Forecast")
@@ -71,10 +72,19 @@ def main():
         if "f_wind" not in st.session_state: st.session_state.f_wind = 10
         if "f_precip" not in st.session_state: st.session_state.f_precip = 0.0
         if "f_vis" not in st.session_state: st.session_state.f_vis = 10
+        if "f_lat" not in st.session_state: st.session_state.f_lat = 40.7128
+        if "f_lon" not in st.session_state: st.session_state.f_lon = -74.0060
         
         with col2:
-            lat = st.number_input("Latitude", value=40.7128, format="%.4f")
-            lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
+            # GPS Tracker
+            location = streamlit_geolocation()
+            if location and location['latitude'] is not None:
+                st.session_state.f_lat = location['latitude']
+                st.session_state.f_lon = location['longitude']
+                st.success("📍 Location Updated!")
+
+            lat = st.number_input("Latitude", value=st.session_state.f_lat, format="%.4f", key="f_lat_input")
+            lon = st.number_input("Longitude", value=st.session_state.f_lon, format="%.4f", key="f_lon_input")
             
             # Real-time Weather & Time Button
             if st.button("☁️ Fetch Real Weather & Time"):
