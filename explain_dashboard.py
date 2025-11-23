@@ -84,7 +84,8 @@ def main():
                     st.session_state.f_weather = real_weather.get("weather_condition", 1)
                     st.session_state.f_wind = int(real_weather.get("wind_speed", 10))
                     st.session_state.f_precip = float(real_weather.get("precipitation", 0.0))
-                    st.session_state.f_vis = int(real_weather.get("visibility", 10))
+                    # Clamp visibility to slider max (20) to avoid errors
+                    st.session_state.f_vis = min(int(real_weather.get("visibility", 10)), 20)
                     st.success("Fetched real-time weather!")
                 else:
                     st.error("Could not fetch weather.")
