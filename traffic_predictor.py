@@ -8,7 +8,7 @@ import os
 class TrafficPredictor:
     def __init__(self, model_path="traffic_model.pkl"):
         self.model_path = model_path
-        self.model = RandomForestRegressor(n_estimators=100, random_state=42)
+        self.model = RandomForestRegressor(n_estimators=50, random_state=42)
         self.is_trained = False
         self.features = ["hour", "day_of_week", "weather", "lat", "lon", "event", "wind", "precip", "visibility", "pollution"]
         
@@ -58,7 +58,7 @@ class TrafficPredictor:
         return self.model.predict(X)
 
     def save(self):
-        joblib.dump(self.model, self.model_path)
+        joblib.dump(self.model, self.model_path, compress=3)
         print(f"Model saved to {self.model_path}")
 
     def load(self, path):
