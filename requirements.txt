@@ -1,0 +1,8 @@
+pandas
+scikit-learn
+joblib
+requests
+folium
+shap
+streamlit
+matplotlib
