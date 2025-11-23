@@ -126,8 +126,21 @@ def main():
 
     elif page == "Live Monitor":
         st.title("📡 Live Traffic Monitor")
-        st.markdown("Simulating real-time traffic data feed...")
+        st.markdown("Real-time traffic data feed.")
         
+        # API Key Input
+        api_key = st.text_input("Enter TomTom API Key (Optional for Real Data)", type="password")
+        if not api_key:
+            st.info("No key provided. Running in **Simulation Mode**.")
+        else:
+            st.success("API Key provided! Fetching **Real-World Data**.")
+            
+        # Location Input for Real Data
+        if api_key:
+            col_lat, col_lon = st.columns(2)
+            monitor_lat = col_lat.number_input("Monitor Latitude", value=40.7128, format="%.4f")
+            monitor_lon = col_lon.number_input("Monitor Longitude", value=-74.0060, format="%.4f")
+
         # Dashboard metrics
         col1, col2, col3, col4 = st.columns(4)
         metric_vol = col1.empty()
@@ -141,6 +154,7 @@ def main():
         # Simulation loop
         import time
         import numpy as np
+        from tomtom_integration import fetch_real_time_traffic
         
         if "live_data" not in st.session_state:
             st.session_state.live_data = []
@@ -150,19 +164,36 @@ def main():
             stop_btn = st.button("Stop")
             
             while not stop_btn:
-                # Simulate new data point
+                # Default simulated values
                 new_vol = int(np.random.normal(1500, 300))
                 new_speed = int(np.random.normal(45, 10))
                 active_incidents = int(np.random.choice([0, 1, 2], p=[0.7, 0.2, 0.1]))
+                status = "Normal"
                 
+                # Fetch Real Data if Key is present
+                if api_key:
+                    real_data = fetch_real_time_traffic(api_key, monitor_lat, monitor_lon)
+                    if real_data:
+                        new_speed = real_data['current_speed']
+                        # Estimate volume from congestion (inverse relationship approx)
+                        congestion = real_data['congestion_level']
+                        new_vol = int(500 + (congestion * 20)) # Rough proxy
+                        
+                        if congestion > 50: status = "Congested"
+                        elif congestion < 10: status = "Free Flow"
+                        else: status = "Normal"
+                        
+                        # Incidents not in this specific endpoint, keep simulated or 0
+                        active_incidents = 0 
+                else:
+                    # Simulation logic
+                    if new_vol > 2000: status = "Congested"
+                    elif new_vol < 500: status = "Free Flow"
+
                 # Update metrics
-                metric_vol.metric("Volume", f"{new_vol} veh/hr", delta=f"{np.random.randint(-50, 50)}")
+                metric_vol.metric("Volume (Est)", f"{new_vol} veh/hr", delta=f"{np.random.randint(-50, 50)}")
                 metric_speed.metric("Avg Speed", f"{new_speed} km/h", delta=f"{np.random.randint(-5, 5)}")
                 metric_incidents.metric("Active Incidents", f"{active_incidents}", delta_color="inverse")
-                
-                status = "Normal"
-                if new_vol > 2000: status = "Congested"
-                elif new_vol < 500: status = "Free Flow"
                 
                 if status == "Congested":
                     metric_status.error(status)
@@ -176,7 +207,7 @@ def main():
                     
                 chart_placeholder.line_chart(st.session_state.live_data)
                 
-                time.sleep(1)
+                time.sleep(2) # Slower update for API rate limits
                 
     elif page == "Model Analysis":
         st.title("📊 Model Explainability")
