@@ -129,7 +129,8 @@ def main():
         st.markdown("Real-time traffic data feed.")
         
         # API Key Input
-        api_key = st.text_input("Enter TomTom API Key (Optional for Real Data)", type="password")
+        default_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
+        api_key = st.text_input("Enter TomTom API Key (Optional for Real Data)", value=default_key, type="password")
         if not api_key:
             st.info("No key provided. Running in **Simulation Mode**.")
         else:
