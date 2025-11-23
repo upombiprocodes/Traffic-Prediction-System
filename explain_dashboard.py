@@ -37,6 +37,25 @@ def load_data():
         return pd.read_csv("sample_data.csv")
     except:
         return pd.DataFrame()
+
+# --- Main App ---
+def main():
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor"])
+
+    tp = load_model_and_predictor()
+    data = load_data()
+
+    # Global API Key Management
+    if "tomtom_key" not in st.session_state:
+        if "tomtom_key" in st.secrets:
+            st.session_state.tomtom_key = st.secrets["tomtom_key"]
+        else:
+            st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
+    
+    with st.sidebar.expander("⚙️ API Settings"):
+        st.session_state.tomtom_key = st.text_input("TomTom API Key", value=st.session_state.tomtom_key, type="password")
+
     # --- UI/UX Enhancements ---
     def load_lottieurl(url: str):
         r = requests.get(url)
