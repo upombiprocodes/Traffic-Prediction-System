@@ -5,6 +5,7 @@ import shap
 import folium
 import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
+import altair as alt
 
 # Local imports
 from traffic_predictor import TrafficPredictor
@@ -287,12 +288,38 @@ def main():
                 else:
                     metric_status.success(status)
                 
-                # Update chart
-                st.session_state.live_data.append(new_vol)
-                if len(st.session_state.live_data) > 50:
+                # Update chart data
+                current_time = datetime.now().strftime("%H:%M:%S")
+                st.session_state.live_data.append({
+                    "Time": current_time,
+                    "Volume": new_vol,
+                    "Speed": new_speed
+                })
+                
+                if len(st.session_state.live_data) > 30:
                     st.session_state.live_data.pop(0)
-                    
-                chart_placeholder.line_chart(st.session_state.live_data)
+                
+                # Create DataFrame
+                df_chart = pd.DataFrame(st.session_state.live_data)
+                
+                # Altair Dual-Axis Chart
+                base = alt.Chart(df_chart).encode(x='Time')
+
+                line_vol = base.mark_area(opacity=0.3, color='red').encode(
+                    y=alt.Y('Volume', axis=alt.Axis(title='Traffic Volume', titleColor='red'))
+                )
+
+                line_speed = base.mark_line(stroke='blue', interpolate='monotone').encode(
+                    y=alt.Y('Speed', axis=alt.Axis(title='Speed (km/h)', titleColor='blue'))
+                )
+
+                c = alt.layer(line_vol, line_speed).resolve_scale(
+                    y='independent'
+                ).properties(
+                    title="Real-time Traffic Volume vs Speed"
+                )
+                
+                chart_placeholder.altair_chart(c, use_container_width=True)
                 
                 time.sleep(2) # Slower update for API rate limits
                 
