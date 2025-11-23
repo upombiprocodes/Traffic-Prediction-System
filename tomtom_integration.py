@@ -105,7 +105,7 @@ def fetch_real_time_incidents(api_key, lat, lon, radius=5000):
 
     except Exception as e:
         print(f"TomTom Incident API Error: {e}")
-        return []
+        return None
 
 if __name__ == "__main__":
     # Test with a dummy key (will fail, but checks import)

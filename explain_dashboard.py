@@ -420,7 +420,10 @@ def main():
         
         if st.button("Scan for Incidents"):
             incidents = fetch_real_time_incidents(st.session_state.tomtom_key, lat, lon)
-            if incidents:
+            
+            if incidents is None:
+                st.error("⚠️ API Error: Could not fetch incidents. Please check your TomTom API Key (Quota might be exceeded).")
+            elif incidents:
                 for inc in incidents:
                     with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
                         st.write(f"**Description:** {inc['description']}")
@@ -436,7 +439,7 @@ def main():
                         map_html = m._repr_html_()
                         components.html(map_html, height=300)
             else:
-                st.info("No active incidents reported in this area.")
+                st.info("✅ No active incidents reported in this area.")
         else:
              st.info("Click 'Scan' to find real incidents near the coordinates.")
 
