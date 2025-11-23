@@ -51,7 +51,8 @@ def load_data():
 # --- Main App ---
 def main():
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Monitor"])
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor"])
 
     tp = load_model_and_predictor()
     data = load_data()
@@ -179,22 +180,39 @@ def main():
     """, unsafe_allow_html=True)
 
     # --- Interactive Background (Particles) ---
-    # Injecting a lightweight particle network effect
-    components.html("""
+    # Injecting via st.markdown to ensure it renders in the main window context
+    st.markdown("""
+    <canvas id="particle-canvas"></canvas>
     <style>
-        body { margin: 0; overflow: hidden; background: transparent; }
-        canvas { display: block; position: absolute; top: 0; left: 0; z-index: -1; }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1; /* Behind content */
+            pointer-events: none; /* Let clicks pass through */
+        }
+        /* Make the main Streamlit app background transparent */
+        .stApp {
+            background: transparent !important;
+        }
+        /* Ensure content is readable */
+        .block-container {
+            background: rgba(14, 17, 23, 0.7); /* Semi-transparent dark backing for content */
+            border-radius: 15px;
+            padding: 2rem;
+            backdrop-filter: blur(5px);
+        }
     </style>
-    <canvas id="canvas"></canvas>
     <script>
-        const canvas = document.getElementById('canvas');
+        const canvas = document.getElementById('particle-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
         let particlesArray;
 
-        // Get mouse position
         let mouse = {
             x: null,
             y: null,
@@ -208,7 +226,6 @@ def main():
             }
         );
 
-        // Create particle
         class Particle {
             constructor(x, y, directionX, directionY, size, color) {
                 this.x = x;
@@ -218,14 +235,12 @@ def main():
                 this.size = size;
                 this.color = color;
             }
-            // Method to draw individual particle
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
                 ctx.fillStyle = '#00d2ff';
                 ctx.fill();
             }
-            // Check particle position, check mouse position, move the particle, draw the particle
             update() {
                 if (this.x > canvas.width || this.x < 0) {
                     this.directionX = -this.directionX;
@@ -234,7 +249,6 @@ def main():
                     this.directionY = -this.directionY;
                 }
 
-                // Check collision detection - mouse position / particle position
                 let dx = mouse.x - this.x;
                 let dy = mouse.y - this.y;
                 let distance = Math.sqrt(dx*dx + dy*dy);
@@ -258,7 +272,6 @@ def main():
             }
         }
 
-        // Create particle array
         function init() {
             particlesArray = [];
             let numberOfParticles = (canvas.height * canvas.width) / 9000;
@@ -274,7 +287,6 @@ def main():
             }
         }
 
-        // Check if particles are close enough to draw line between them
         function connect(){
             let opacityValue = 1;
             for (let a = 0; a < particlesArray.length; a++) {
@@ -294,7 +306,6 @@ def main():
             }
         }
 
-        // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             ctx.clearRect(0, 0, innerWidth, innerHeight);
@@ -305,7 +316,6 @@ def main():
             connect();
         }
 
-        // Resize event
         window.addEventListener('resize',
             function(){
                 canvas.width = innerWidth;
@@ -315,18 +325,17 @@ def main():
             }
         );
 
-        // Mouse out event
         window.addEventListener('mouseout',
             function(){
                 mouse.x = undefined;
-                mouse.x = undefined;
+                mouse.y = undefined;
             }
         )
 
         init();
         animate();
     </script>
-    """, height=0, scrolling=False)
+    """, unsafe_allow_html=True)
 
     # Load Lottie Animation (Traffic Car)
     lottie_traffic = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_xnb8w9.json") # Placeholder URL
@@ -476,6 +485,66 @@ def main():
 
             except Exception as e:
                 st.error(f"Prediction failed: {e}")
+
+    elif page == "Live Map":
+        st.title("🗺️ Live Traffic Hotspots")
+        st.markdown(f"Visualizing traffic hotspots near **{lat:.4f}, {lon:.4f}**")
+        
+        if st.button("Update Map"):
+            # Fetch real incidents
+            real_incidents = fetch_real_time_incidents(st.session_state.tomtom_key, lat, lon)
+            
+            # Create map centered on search
+            m = folium.Map(location=[lat, lon], zoom_start=13)
+            
+            # Plot incidents
+            if real_incidents:
+                for inc in real_incidents:
+                    folium.Marker(
+                        [inc['lat'], inc['lon']],
+                        popup=f"{inc['type']}: {inc['description']}",
+                        icon=folium.Icon(color='red', icon='info-sign')
+                    ).add_to(m)
+                st.success(f"Found {len(real_incidents)} real-time incidents!")
+            else:
+                st.info("No active incidents found in this area.")
+                
+            # Render map
+            map_html = m._repr_html_()
+            components.html(map_html, height=600)
+        else:
+            # Default view
+            if not data.empty:
+                df_hotspots = find_hotspots(data.copy())
+                m = visualize_hotspots(df_hotspots)
+                map_html = m._repr_html_()
+                components.html(map_html, height=600)
+
+    elif page == "Incidents":
+        st.title("🚨 Active Incidents")
+        st.markdown(f"Real-time reports near **{lat:.4f}, {lon:.4f}**")
+        
+        if st.button("Scan for Incidents"):
+            incidents = fetch_real_time_incidents(st.session_state.tomtom_key, lat, lon)
+            if incidents:
+                for inc in incidents:
+                    with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
+                        st.write(f"**Description:** {inc['description']}")
+                        st.write(f"**Location:** {inc['lat']:.4f}, {inc['lon']:.4f}")
+                        
+                        # Use Folium instead of st.map for better stability
+                        m = folium.Map(location=[inc['lat'], inc['lon']], zoom_start=15)
+                        folium.Marker(
+                            [inc['lat'], inc['lon']],
+                            popup=inc['description'],
+                            icon=folium.Icon(color='red', icon='warning-sign')
+                        ).add_to(m)
+                        map_html = m._repr_html_()
+                        components.html(map_html, height=300)
+            else:
+                st.info("No active incidents reported in this area.")
+        else:
+             st.info("Click 'Scan' to find real incidents near the coordinates.")
 
     elif page == "Live Monitor":
         st.title("📡 Live Traffic Monitor")
