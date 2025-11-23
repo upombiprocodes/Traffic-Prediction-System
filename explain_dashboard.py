@@ -8,10 +8,17 @@ import matplotlib.pyplot as plt
 import altair as alt
 import requests
 
+import requests
+from datetime import datetime
+from streamlit_lottie import st_lottie
+from streamlit_geolocation import streamlit_geolocation
+
 # Local imports
 from traffic_predictor import TrafficPredictor
 from incident_integration import fetch_incidents, add_incident_feature
 from geospatial_analysis import find_hotspots, visualize_hotspots
+from weather_integration import fetch_current_weather
+from tomtom_integration import fetch_real_time_incidents, fetch_real_time_traffic
 
 st.set_page_config(page_title="Traffic Prediction System", layout="wide")
 
