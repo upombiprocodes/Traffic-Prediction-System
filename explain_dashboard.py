@@ -41,7 +41,7 @@ def load_data():
 # --- Main App ---
 def main():
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor", "Model Analysis"])
+    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor"])
 
     # --- Global Location Management (Sidebar) ---
     st.sidebar.markdown("---")
@@ -95,66 +95,108 @@ def main():
             return None
         return r.json()
 
-    # Custom CSS for Glassmorphism & Animations
+    # Custom CSS for Cyberpunk/SaaS Theme
     st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        /* Global Reset & Font */
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+        
         /* Main Background */
         .stApp {
-            background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
-            color: #ffffff;
+            background: #0e1117;
+            background-image: radial-gradient(circle at 50% 0%, #1e1e2f 0%, #0e1117 60%);
+            color: #e0e0e0;
         }
         
-        /* Sidebar Glassmorphism */
+        /* Sidebar */
         section[data-testid="stSidebar"] {
-            background-color: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #161b22;
+            border-right: 1px solid #30363d;
         }
         
-        /* Card/Container Glassmorphism */
+        /* Glassmorphism Cards */
         div[data-testid="stVerticalBlock"] > div {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
+            background-color: rgba(22, 27, 34, 0.8);
+            border: 1px solid rgba(48, 54, 61, 0.5);
+            border-radius: 12px;
             padding: 20px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
         div[data-testid="stVerticalBlock"] > div:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 210, 255, 0.1);
+            border-color: rgba(0, 210, 255, 0.3);
         }
 
-        /* Headers */
+        /* Typography */
         h1, h2, h3 {
-            color: #00d2ff !important;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+            color: #ffffff !important;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        h1 {
+            background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
         /* Metrics */
         div[data-testid="stMetricValue"] {
             color: #00ff9d !important;
-            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+            font-family: 'Inter', monospace;
+            text-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+        }
+        div[data-testid="stMetricLabel"] {
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+        
+        /* Inputs */
+        .stTextInput > div > div > input, .stNumberInput > div > div > input {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+        }
+        .stTextInput > div > div > input:focus, .stNumberInput > div > div > input:focus {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
         }
         
         /* Buttons */
         .stButton > button {
-            background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+            background: linear-gradient(90deg, #238636 0%, #2ea043 100%);
             color: white;
             border: none;
-            border-radius: 25px;
-            padding: 10px 25px;
-            font-weight: bold;
-            transition: all 0.3s ease;
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(46, 160, 67, 0.4);
+            transition: all 0.2s ease;
         }
         .stButton > button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.5);
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(46, 160, 67, 0.6);
         }
+        
+        /* Secondary Button */
+        button[kind="secondary"] {
+            background: transparent;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+        }
+        button[kind="secondary"]:hover {
+            border-color: #8b949e;
+            color: #ffffff;
+        }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -389,47 +431,33 @@ def main():
                 # Create DataFrame
                 df_chart = pd.DataFrame(st.session_state.live_data)
                 
-                # Altair Dual-Axis Chart
-                base = alt.Chart(df_chart).encode(x='Time')
+                # Altair Dual-Axis Chart (Cyberpunk Style)
+                base = alt.Chart(df_chart).encode(x=alt.X('Time', axis=alt.Axis(labelColor='#8b949e', titleColor='#8b949e')))
 
-                line_vol = base.mark_area(opacity=0.3, color='red').encode(
-                    y=alt.Y('Volume', axis=alt.Axis(title='Traffic Volume', titleColor='red'))
+                line_vol = base.mark_area(opacity=0.3, color='#ff0055').encode(
+                    y=alt.Y('Volume', axis=alt.Axis(title='Traffic Volume', titleColor='#ff0055', labelColor='#ff0055'))
                 )
 
-                line_speed = base.mark_line(stroke='blue', interpolate='monotone').encode(
-                    y=alt.Y('Speed', axis=alt.Axis(title='Speed (km/h)', titleColor='blue'))
+                line_speed = base.mark_line(stroke='#00d2ff', interpolate='monotone', strokeWidth=3).encode(
+                    y=alt.Y('Speed', axis=alt.Axis(title='Speed (km/h)', titleColor='#00d2ff', labelColor='#00d2ff'))
                 )
 
                 c = alt.layer(line_vol, line_speed).resolve_scale(
                     y='independent'
                 ).properties(
-                    title="Real-time Traffic Volume vs Speed"
+                    title="Real-time Traffic Volume vs Speed",
+                    background='transparent'
+                ).configure_view(
+                    strokeWidth=0
+                ).configure_title(
+                    color='#ffffff',
+                    fontSize=16,
+                    font='Inter'
                 )
                 
                 chart_placeholder.altair_chart(c, use_container_width=True)
                 
                 time.sleep(2) # Slower update for API rate limits
-                
-    elif page == "Model Analysis":
-        st.title("📊 Model Explainability")
-        st.markdown("Understanding how the model makes predictions.")
-        
-        if tp.is_trained and not data.empty:
-            st.subheader("Feature Importance (SHAP)")
-            st.write("This plot shows which features have the biggest impact on traffic predictions.")
-            
-            # Calculate SHAP values (using a subset for speed)
-            X_sample = data[tp.features].sample(min(100, len(data)))
-            explainer = shap.TreeExplainer(tp.model)
-            shap_values = explainer.shap_values(X_sample)
-            
-            # Plot
-            fig, ax = plt.subplots()
-            shap.summary_plot(shap_values, X_sample, show=False)
-            st.pyplot(plt.gcf())
-            plt.clf() # Clear figure
-        else:
-            st.warning("Model not trained or no data available for analysis.")
 
 if __name__ == "__main__":
     main()
