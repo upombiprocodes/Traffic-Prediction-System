@@ -124,6 +124,60 @@ def main():
         else:
             st.info("No active incidents reported.")
 
+    elif page == "Live Monitor":
+        st.title("📡 Live Traffic Monitor")
+        st.markdown("Simulating real-time traffic data feed...")
+        
+        # Dashboard metrics
+        col1, col2, col3, col4 = st.columns(4)
+        metric_vol = col1.empty()
+        metric_speed = col2.empty()
+        metric_incidents = col3.empty()
+        metric_status = col4.empty()
+        
+        # Chart placeholder
+        chart_placeholder = st.empty()
+        
+        # Simulation loop
+        import time
+        import numpy as np
+        
+        if "live_data" not in st.session_state:
+            st.session_state.live_data = []
+
+        if st.button("Start Monitoring"):
+            st.info("Monitoring started... (Press Stop to end)")
+            stop_btn = st.button("Stop")
+            
+            while not stop_btn:
+                # Simulate new data point
+                new_vol = int(np.random.normal(1500, 300))
+                new_speed = int(np.random.normal(45, 10))
+                active_incidents = int(np.random.choice([0, 1, 2], p=[0.7, 0.2, 0.1]))
+                
+                # Update metrics
+                metric_vol.metric("Volume", f"{new_vol} veh/hr", delta=f"{np.random.randint(-50, 50)}")
+                metric_speed.metric("Avg Speed", f"{new_speed} km/h", delta=f"{np.random.randint(-5, 5)}")
+                metric_incidents.metric("Active Incidents", f"{active_incidents}", delta_color="inverse")
+                
+                status = "Normal"
+                if new_vol > 2000: status = "Congested"
+                elif new_vol < 500: status = "Free Flow"
+                
+                if status == "Congested":
+                    metric_status.error(status)
+                else:
+                    metric_status.success(status)
+                
+                # Update chart
+                st.session_state.live_data.append(new_vol)
+                if len(st.session_state.live_data) > 50:
+                    st.session_state.live_data.pop(0)
+                    
+                chart_placeholder.line_chart(st.session_state.live_data)
+                
+                time.sleep(1)
+                
     elif page == "Model Analysis":
         st.title("📊 Model Explainability")
         st.markdown("Understanding how the model makes predictions.")

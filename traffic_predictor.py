@@ -69,13 +69,11 @@ class TrafficPredictor:
 if __name__ == "__main__":
     tp = TrafficPredictor()
     try:
-        if os.path.exists("sample_data.csv"):
-            X, y = tp.load_data("sample_data.csv")
-            tp.train(X, y)
-            predictions = tp.predict(X.head())
-            print("Sample predictions:", predictions)
-        else:
-            print("sample_data.csv not found. Skipping training demo.")
+        data_file = "traffic_data_large.csv" if os.path.exists("traffic_data_large.csv") else "sample_data.csv"
+        print(f"Loading data from {data_file}...")
+        X, y = tp.load_data(data_file)
+        mae = tp.train(X, y)
+        print(f"Training complete. MAE: {mae:.2f}")
     except Exception as e:
         print(f"An error occurred: {e}")
  
