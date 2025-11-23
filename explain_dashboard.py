@@ -11,6 +11,8 @@ import requests
 import requests
 from datetime import datetime
 from streamlit_lottie import st_lottie
+import time
+import numpy as np
 from streamlit_geolocation import streamlit_geolocation
 
 # Local imports
@@ -406,10 +408,6 @@ def main():
         chart_placeholder = st.empty()
         
         # Simulation loop
-        import time
-        import numpy as np
-        from tomtom_integration import fetch_real_time_traffic
-        
         if "live_data" not in st.session_state:
             st.session_state.live_data = []
 
