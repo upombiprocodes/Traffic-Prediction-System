@@ -37,57 +37,6 @@ def load_data():
         return pd.read_csv("sample_data.csv")
     except:
         return pd.DataFrame()
-
-# --- Main App ---
-def main():
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor"])
-
-    # --- Global Location Management (Sidebar) ---
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📍 Location Settings")
-
-    # Initialize Global Location State
-    if "global_lat" not in st.session_state: st.session_state.global_lat = 40.7128
-    if "global_lon" not in st.session_state: st.session_state.global_lon = -74.0060
-
-    # GPS Tracker in Sidebar
-    from streamlit_geolocation import streamlit_geolocation
-    location = streamlit_geolocation()
-    if location and location['latitude'] is not None:
-        st.session_state.global_lat = location['latitude']
-        st.session_state.global_lon = location['longitude']
-        st.sidebar.success("Updated via GPS!")
-
-    # Manual Input (Linked to Global State)
-    # We use callbacks or just let the input update the state directly
-    st.session_state.global_lat = st.sidebar.number_input("Latitude", value=st.session_state.global_lat, format="%.4f")
-    st.session_state.global_lon = st.sidebar.number_input("Longitude", value=st.session_state.global_lon, format="%.4f")
-
-    # Global API Key Management
-    if "tomtom_key" not in st.session_state:
-        # Try to get from secrets first, then fallback to empty or default
-        if "tomtom_key" in st.secrets:
-            st.session_state.tomtom_key = st.secrets["tomtom_key"]
-        else:
-            st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
-    
-    with st.sidebar.expander("⚙️ API Settings"):
-        st.session_state.tomtom_key = st.text_input("TomTom API Key", value=st.session_state.tomtom_key, type="password")
-        if not st.session_state.tomtom_key:
-             st.info("💡 Tip: Add `tomtom_key` to Streamlit Secrets for auto-login.")
-
-    tp = load_model_and_predictor()
-    data = load_data()
-    
-    # Imports for real-time data
-    from weather_integration import fetch_current_weather
-    from tomtom_integration import fetch_real_time_incidents
-    from datetime import datetime
-    from streamlit_geolocation import streamlit_geolocation
-    from streamlit_lottie import st_lottie
-    import requests
-
     # --- UI/UX Enhancements ---
     def load_lottieurl(url: str):
         r = requests.get(url)
@@ -203,7 +152,11 @@ def main():
     # Load Lottie Animation (Traffic Car)
     lottie_traffic = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_xnb8w9.json") # Placeholder URL
 
-    # Use global location variables for convenience
+    # Initialize Global Location State if not present
+    if "global_lat" not in st.session_state: st.session_state.global_lat = 40.7128
+    if "global_lon" not in st.session_state: st.session_state.global_lon = -74.0060
+
+    # Use global location variables
     lat = st.session_state.global_lat
     lon = st.session_state.global_lon
 
@@ -216,8 +169,55 @@ def main():
             if lottie_traffic:
                 st_lottie(lottie_traffic, height=100, key="traffic_anim")
 
-        col1, col2 = st.columns(2)
+        # --- Location & Weather Controls ---
+        st.markdown("### 📍 Location & Conditions")
+        col_loc, col_weather = st.columns(2)
         
+        with col_loc:
+            # Custom styling for the container
+            with st.container():
+                st.markdown("##### Set Location")
+                # GPS Button (using streamlit-geolocation)
+                loc = streamlit_geolocation()
+                if loc and loc['latitude'] is not None:
+                    st.session_state.global_lat = loc['latitude']
+                    st.session_state.global_lon = loc['longitude']
+                    st.rerun()
+                
+                # Manual Input Expander
+                with st.expander("Or enter manually"):
+                    new_lat = st.number_input("Latitude", value=lat, format="%.4f")
+                    new_lon = st.number_input("Longitude", value=lon, format="%.4f")
+                    if st.button("Update Coords"):
+                        st.session_state.global_lat = new_lat
+                        st.session_state.global_lon = new_lon
+                        st.rerun()
+
+        with col_weather:
+             with st.container():
+                st.markdown("##### Live Conditions")
+                # Real-time Weather & Time Button
+                if st.button("☁️ Fetch Real Weather & Time", use_container_width=True):
+                    # 1. Fetch Weather
+                    real_weather = fetch_current_weather(lat, lon)
+                    if real_weather:
+                        st.session_state.f_weather = real_weather.get("weather_condition", 1)
+                        st.session_state.f_wind = int(real_weather.get("wind_speed", 10))
+                        st.session_state.f_precip = float(real_weather.get("precipitation", 0.0))
+                        st.session_state.f_vis = min(int(real_weather.get("visibility", 10)), 20)
+                        st.success("Fetched real-time weather!")
+                    else:
+                        st.error("Could not fetch weather.")
+                    
+                    # 2. Set Time to Now
+                    now = datetime.now()
+                    st.session_state.f_hour = now.hour
+                    st.session_state.f_day = now.weekday()
+        
+        st.markdown("---")
+        
+        # Inputs
+        col1, col2 = st.columns(2)
         # Initialize session state for inputs if not set
         if "f_hour" not in st.session_state: st.session_state.f_hour = 12
         if "f_day" not in st.session_state: st.session_state.f_day = 0
@@ -227,25 +227,6 @@ def main():
         if "f_vis" not in st.session_state: st.session_state.f_vis = 10
         
         with col2:
-            # Real-time Weather & Time Button
-            if st.button("☁️ Fetch Real Weather & Time"):
-                # 1. Fetch Weather
-                real_weather = fetch_current_weather(lat, lon)
-                if real_weather:
-                    st.session_state.f_weather = real_weather.get("weather_condition", 1)
-                    st.session_state.f_wind = int(real_weather.get("wind_speed", 10))
-                    st.session_state.f_precip = float(real_weather.get("precipitation", 0.0))
-                    # Clamp visibility to slider max (20) to avoid errors
-                    st.session_state.f_vis = min(int(real_weather.get("visibility", 10)), 20)
-                    st.success("Fetched real-time weather!")
-                else:
-                    st.error("Could not fetch weather.")
-                
-                # 2. Set Time to Now
-                now = datetime.now()
-                st.session_state.f_hour = now.hour
-                st.session_state.f_day = now.weekday() # 0=Mon, 6=Sun
-            
             wind = st.slider("Wind Speed (km/h)", 0, 50, key="f_wind")
             precip = st.slider("Precipitation (mm)", 0.0, 20.0, key="f_precip")
             visibility = st.slider("Visibility (km)", 0, 20, key="f_vis")
@@ -257,8 +238,8 @@ def main():
             weather = st.selectbox("Weather Condition", [1, 2, 3, 4], format_func=lambda x: {1:"Clear", 2:"Cloudy", 3:"Rain", 4:"Snow"}.get(x, "Unknown"), key="f_weather")
             event = st.checkbox("Major Event Nearby?", value=False)
 
-        if st.button("Predict Traffic Volume", type="primary"):
-            # Prepare input
+        if st.button("Predict Traffic Volume", type="primary", use_container_width=True):
+            # 1. Model Prediction
             input_data = pd.DataFrame({
                 "hour": [hour],
                 "day_of_week": [day],
@@ -274,15 +255,44 @@ def main():
             
             try:
                 prediction = tp.predict(input_data)[0]
-                st.success(f"Predicted Traffic Volume: **{int(prediction)} vehicles/hr**")
                 
-                # Contextual interpretation
-                if prediction < 1000:
-                    st.info("Traffic is light. Good time to travel!")
-                elif prediction < 2000:
-                    st.warning("Traffic is moderate. Expect some delays.")
-                else:
-                    st.error("Traffic is heavy. Avoid this route if possible.")
+                # 2. Real-time Correction (Accuracy Boost)
+                real_traffic = None
+                if st.session_state.tomtom_key:
+                    real_traffic = fetch_real_time_traffic(st.session_state.tomtom_key, lat, lon)
+                
+                st.markdown("### 🔮 Prediction Results")
+                
+                c1, c2 = st.columns(2)
+                
+                with c1:
+                    st.metric("Model Forecast", f"{int(prediction)} veh/hr")
+                    if prediction < 1000:
+                        st.info("Model: Light Traffic")
+                    elif prediction < 2000:
+                        st.warning("Model: Moderate Traffic")
+                    else:
+                        st.error("Model: Heavy Traffic")
+
+                with c2:
+                    if real_traffic:
+                        # Use real data to validate/correct
+                        real_speed = real_traffic['current_speed']
+                        congestion = real_traffic['congestion_level']
+                        
+                        st.metric("Real-time Speed", f"{real_speed} km/h")
+                        
+                        if congestion > 30:
+                            st.error(f"⚠️ Reality Check: High Congestion ({congestion}%)")
+                        else:
+                            st.success(f"✅ Reality Check: Flowing Well ({congestion}% Congestion)")
+                            
+                        # Adjust advice based on reality
+                        if congestion > 50 and prediction < 2000:
+                            st.warning("⚠️ Note: Real-time traffic is heavier than predicted due to live incidents.")
+                    else:
+                        st.info("Connect TomTom API for Real-time Accuracy Check")
+
             except Exception as e:
                 st.error(f"Prediction failed: {e}")
 
