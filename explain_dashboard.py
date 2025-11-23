@@ -56,43 +56,54 @@ def main():
     # Imports for real-time data
     from weather_integration import fetch_current_weather
     from tomtom_integration import fetch_real_time_incidents
+    from datetime import datetime
 
     if page == "Traffic Forecast":
         st.title("🚦 Real-time Traffic Forecast")
-        st.markdown("Predict traffic volume based on current conditions.")
+        st.markdown("Predict traffic volume. Use sliders for **Future Predictions** or click below for **Right Now**.")
 
         col1, col2 = st.columns(2)
         
-        with col1:
-            hour = st.slider("Hour of Day", 0, 23, 12)
-            day = st.selectbox("Day of Week", [0, 1, 2, 3, 4, 5, 6], format_func=lambda x: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x])
-            weather = st.selectbox("Weather Condition", [1, 2, 3, 4], format_func=lambda x: {1:"Clear", 2:"Cloudy", 3:"Rain", 4:"Snow"}.get(x, "Unknown"))
-            event = st.checkbox("Major Event Nearby?", value=False)
-
+        # Initialize session state for inputs if not set
+        if "f_hour" not in st.session_state: st.session_state.f_hour = 12
+        if "f_day" not in st.session_state: st.session_state.f_day = 0
+        if "f_weather" not in st.session_state: st.session_state.f_weather = 1
+        if "f_wind" not in st.session_state: st.session_state.f_wind = 10
+        if "f_precip" not in st.session_state: st.session_state.f_precip = 0.0
+        if "f_vis" not in st.session_state: st.session_state.f_vis = 10
+        
         with col2:
             lat = st.number_input("Latitude", value=40.7128, format="%.4f")
             lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
             
-            # Real-time Weather Button
-            if st.button("☁️ Fetch Real Weather"):
+            # Real-time Weather & Time Button
+            if st.button("☁️ Fetch Real Weather & Time"):
+                # 1. Fetch Weather
                 real_weather = fetch_current_weather(lat, lon)
                 if real_weather:
-                    st.session_state.rw = real_weather
+                    st.session_state.f_weather = real_weather.get("weather_condition", 1)
+                    st.session_state.f_wind = int(real_weather.get("wind_speed", 10))
+                    st.session_state.f_precip = float(real_weather.get("precipitation", 0.0))
+                    st.session_state.f_vis = int(real_weather.get("visibility", 10))
                     st.success("Fetched real-time weather!")
                 else:
                     st.error("Could not fetch weather.")
+                
+                # 2. Set Time to Now
+                now = datetime.now()
+                st.session_state.f_hour = now.hour
+                st.session_state.f_day = now.weekday() # 0=Mon, 6=Sun
             
-            # Use fetched values if available
-            rw = st.session_state.get("rw", {})
-            
-            wind = st.slider("Wind Speed (km/h)", 0, 50, int(rw.get("wind_speed", 10)))
-            precip = st.slider("Precipitation (mm)", 0.0, 20.0, float(rw.get("precipitation", 0.0)))
-            visibility = st.slider("Visibility (km)", 0, 20, int(rw.get("visibility", 10)))
+            wind = st.slider("Wind Speed (km/h)", 0, 50, key="f_wind")
+            precip = st.slider("Precipitation (mm)", 0.0, 20.0, key="f_precip")
+            visibility = st.slider("Visibility (km)", 0, 20, key="f_vis")
             pollution = st.slider("Pollution Index", 0, 100, 20)
-            
-            # Update weather dropdown if real data fetched
-            if rw:
-                weather = rw.get("weather_condition", 1)
+
+        with col1:
+            hour = st.slider("Hour of Day", 0, 23, key="f_hour")
+            day = st.selectbox("Day of Week", [0, 1, 2, 3, 4, 5, 6], format_func=lambda x: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][x], key="f_day")
+            weather = st.selectbox("Weather Condition", [1, 2, 3, 4], format_func=lambda x: {1:"Clear", 2:"Cloudy", 3:"Rain", 4:"Snow"}.get(x, "Unknown"), key="f_weather")
+            event = st.checkbox("Major Event Nearby?", value=False)
 
         if st.button("Predict Traffic Volume", type="primary"):
             # Prepare input
@@ -176,7 +187,16 @@ def main():
                     with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
                         st.write(f"**Description:** {inc['description']}")
                         st.write(f"**Location:** {inc['lat']:.4f}, {inc['lon']:.4f}")
-                        st.map(pd.DataFrame([inc]))
+                        
+                        # Use Folium instead of st.map for better stability
+                        m = folium.Map(location=[inc['lat'], inc['lon']], zoom_start=15)
+                        folium.Marker(
+                            [inc['lat'], inc['lon']],
+                            popup=inc['description'],
+                            icon=folium.Icon(color='red', icon='warning-sign')
+                        ).add_to(m)
+                        map_html = m._repr_html_()
+                        components.html(map_html, height=300)
             else:
                 st.info("No active incidents reported in this area.")
         else:
