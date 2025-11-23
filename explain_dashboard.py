@@ -42,8 +42,20 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor", "Model Analysis"])
 
+    # Global API Key Management
+    if "tomtom_key" not in st.session_state:
+        st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
+    
+    # Allow user to update key in sidebar
+    with st.sidebar.expander("⚙️ Settings"):
+        st.session_state.tomtom_key = st.text_input("TomTom API Key", value=st.session_state.tomtom_key, type="password")
+
     tp = load_model_and_predictor()
     data = load_data()
+    
+    # Imports for real-time data
+    from weather_integration import fetch_current_weather
+    from tomtom_integration import fetch_real_time_incidents
 
     if page == "Traffic Forecast":
         st.title("🚦 Real-time Traffic Forecast")
@@ -60,10 +72,27 @@ def main():
         with col2:
             lat = st.number_input("Latitude", value=40.7128, format="%.4f")
             lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
-            wind = st.slider("Wind Speed (km/h)", 0, 50, 10)
-            precip = st.slider("Precipitation (mm)", 0.0, 20.0, 0.0)
-            visibility = st.slider("Visibility (km)", 0, 20, 10)
+            
+            # Real-time Weather Button
+            if st.button("☁️ Fetch Real Weather"):
+                real_weather = fetch_current_weather(lat, lon)
+                if real_weather:
+                    st.session_state.rw = real_weather
+                    st.success("Fetched real-time weather!")
+                else:
+                    st.error("Could not fetch weather.")
+            
+            # Use fetched values if available
+            rw = st.session_state.get("rw", {})
+            
+            wind = st.slider("Wind Speed (km/h)", 0, 50, int(rw.get("wind_speed", 10)))
+            precip = st.slider("Precipitation (mm)", 0.0, 20.0, float(rw.get("precipitation", 0.0)))
+            visibility = st.slider("Visibility (km)", 0, 20, int(rw.get("visibility", 10)))
             pollution = st.slider("Pollution Index", 0, 100, 20)
+            
+            # Update weather dropdown if real data fetched
+            if rw:
+                weather = rw.get("weather_condition", 1)
 
         if st.button("Predict Traffic Volume", type="primary"):
             # Prepare input
@@ -98,49 +127,77 @@ def main():
         st.title("🗺️ Live Traffic Hotspots")
         st.markdown("Visualizing traffic hotspots and congestion areas.")
         
-        if not data.empty:
-            # Re-run hotspot analysis
-            df_hotspots = find_hotspots(data.copy())
-            m = visualize_hotspots(df_hotspots)
+        # Search for location
+        search_lat = st.number_input("Center Latitude", value=40.7128, format="%.4f")
+        search_lon = st.number_input("Center Longitude", value=-74.0060, format="%.4f")
+        
+        if st.button("Update Map"):
+            # Fetch real incidents
+            real_incidents = fetch_real_time_incidents(st.session_state.tomtom_key, search_lat, search_lon)
             
+            # Create map centered on search
+            m = folium.Map(location=[search_lat, search_lon], zoom_start=13)
+            
+            # Plot incidents
+            if real_incidents:
+                for inc in real_incidents:
+                    folium.Marker(
+                        [inc['lat'], inc['lon']],
+                        popup=f"{inc['type']}: {inc['description']}",
+                        icon=folium.Icon(color='red', icon='info-sign')
+                    ).add_to(m)
+                st.success(f"Found {len(real_incidents)} real-time incidents!")
+            else:
+                st.info("No active incidents found in this area.")
+                
             # Render map
-            # Using components.html to render Folium map object
             map_html = m._repr_html_()
             components.html(map_html, height=600)
         else:
-            st.warning("No data available to generate map.")
+            # Default view
+            if not data.empty:
+                df_hotspots = find_hotspots(data.copy())
+                m = visualize_hotspots(df_hotspots)
+                map_html = m._repr_html_()
+                components.html(map_html, height=600)
 
     elif page == "Incidents":
         st.title("🚨 Active Incidents")
         st.markdown("Real-time reports of accidents, roadworks, and hazards.")
         
-        incidents = fetch_incidents()
-        if incidents:
-            for inc in incidents:
-                with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
-                    st.write(f"**Description:** {inc['description']}")
-                    st.write(f"**Location:** {inc['lat']:.4f}, {inc['lon']:.4f}")
-                    st.map(pd.DataFrame([inc]))
+        col_lat, col_lon = st.columns(2)
+        i_lat = col_lat.number_input("Latitude", value=40.7128, format="%.4f", key="inc_lat")
+        i_lon = col_lon.number_input("Longitude", value=-74.0060, format="%.4f", key="inc_lon")
+        
+        if st.button("Scan for Incidents"):
+            incidents = fetch_real_time_incidents(st.session_state.tomtom_key, i_lat, i_lon)
+            if incidents:
+                for inc in incidents:
+                    with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
+                        st.write(f"**Description:** {inc['description']}")
+                        st.write(f"**Location:** {inc['lat']:.4f}, {inc['lon']:.4f}")
+                        st.map(pd.DataFrame([inc]))
+            else:
+                st.info("No active incidents reported in this area.")
         else:
-            st.info("No active incidents reported.")
+             st.info("Click 'Scan' to find real incidents near the coordinates.")
 
     elif page == "Live Monitor":
         st.title("📡 Live Traffic Monitor")
         st.markdown("Real-time traffic data feed.")
         
-        # API Key Input
-        default_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
-        api_key = st.text_input("Enter TomTom API Key (Optional for Real Data)", value=default_key, type="password")
+        # Use global key
+        api_key = st.session_state.tomtom_key
+        
         if not api_key:
             st.info("No key provided. Running in **Simulation Mode**.")
         else:
-            st.success("API Key provided! Fetching **Real-World Data**.")
+            st.success("Connected to TomTom Network. Fetching **Real-World Data**.")
             
         # Location Input for Real Data
-        if api_key:
-            col_lat, col_lon = st.columns(2)
-            monitor_lat = col_lat.number_input("Monitor Latitude", value=40.7128, format="%.4f")
-            monitor_lon = col_lon.number_input("Monitor Longitude", value=-74.0060, format="%.4f")
+        col_lat, col_lon = st.columns(2)
+        monitor_lat = col_lat.number_input("Monitor Latitude", value=40.7128, format="%.4f", key="mon_lat")
+        monitor_lon = col_lon.number_input("Monitor Longitude", value=-74.0060, format="%.4f", key="mon_lon")
 
         # Dashboard metrics
         col1, col2, col3, col4 = st.columns(4)
