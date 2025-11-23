@@ -6,6 +6,7 @@ import folium
 import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
 import altair as alt
+import requests
 
 # Local imports
 from traffic_predictor import TrafficPredictor
