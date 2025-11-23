@@ -66,10 +66,16 @@ def main():
 
     # Global API Key Management
     if "tomtom_key" not in st.session_state:
-        st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
+        # Try to get from secrets first, then fallback to empty or default
+        if "tomtom_key" in st.secrets:
+            st.session_state.tomtom_key = st.secrets["tomtom_key"]
+        else:
+            st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
     
     with st.sidebar.expander("⚙️ API Settings"):
         st.session_state.tomtom_key = st.text_input("TomTom API Key", value=st.session_state.tomtom_key, type="password")
+        if not st.session_state.tomtom_key:
+             st.info("💡 Tip: Add `tomtom_key` to Streamlit Secrets for auto-login.")
 
     tp = load_model_and_predictor()
     data = load_data()

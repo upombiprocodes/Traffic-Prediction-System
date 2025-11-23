@@ -1,4 +1,3 @@
 __pycache__/
 *.pyc
 traffic_data_large.csv
-sample_data.csv
