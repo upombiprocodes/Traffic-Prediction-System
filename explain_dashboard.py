@@ -84,14 +84,95 @@ def main():
     from weather_integration import fetch_current_weather
     from tomtom_integration import fetch_real_time_incidents
     from datetime import datetime
+    from streamlit_geolocation import streamlit_geolocation
+    from streamlit_lottie import st_lottie
+    import requests
+
+    # --- UI/UX Enhancements ---
+    def load_lottieurl(url: str):
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+
+    # Custom CSS for Glassmorphism & Animations
+    st.markdown("""
+    <style>
+        /* Main Background */
+        .stApp {
+            background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+            color: #ffffff;
+        }
+        
+        /* Sidebar Glassmorphism */
+        section[data-testid="stSidebar"] {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Card/Container Glassmorphism */
+        div[data-testid="stVerticalBlock"] > div {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Headers */
+        h1, h2, h3 {
+            color: #00d2ff !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+        }
+        
+        /* Metrics */
+        div[data-testid="stMetricValue"] {
+            color: #00ff9d !important;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+        
+        /* Buttons */
+        .stButton > button {
+            background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.5);
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Load Lottie Animation (Traffic Car)
+    lottie_traffic = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_xnb8w9.json") # Placeholder URL
 
     # Use global location variables for convenience
     lat = st.session_state.global_lat
     lon = st.session_state.global_lon
 
     if page == "Traffic Forecast":
-        st.title("🚦 Real-time Traffic Forecast")
-        st.markdown(f"Predicting for **{lat:.4f}, {lon:.4f}**")
+        col_header, col_anim = st.columns([3, 1])
+        with col_header:
+            st.title("🚦 Real-time Traffic Forecast")
+            st.markdown(f"Predicting for **{lat:.4f}, {lon:.4f}**")
+        with col_anim:
+            if lottie_traffic:
+                st_lottie(lottie_traffic, height=100, key="traffic_anim")
 
         col1, col2 = st.columns(2)
         
