@@ -51,7 +51,6 @@ def load_data():
 # --- Main App ---
 def main():
     st.sidebar.title("Navigation")
-    st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor"])
 
     tp = load_model_and_predictor()
@@ -181,160 +180,48 @@ def main():
 
     # --- Interactive Background (Particles) ---
     # Injecting via st.markdown to ensure it renders in the main window context
+    # --- Interactive Background (CSS Animation) ---
+    # Replacing JS canvas with robust CSS animation for better compatibility
     st.markdown("""
-    <canvas id="particle-canvas"></canvas>
     <style>
-        #particle-canvas {
+        /* Animated Background */
+        .stApp {
+            background: linear-gradient(-45deg, #0e1117, #161b22, #0e1117, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Floating Particles Effect (CSS Only) */
+        .stApp::before {
+            content: "";
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1; /* Behind content */
-            pointer-events: none; /* Let clicks pass through */
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            background-position: 0 0, 40px 60px, 130px 270px;
+            animation: snow 60s linear infinite;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
         }
-        /* Make the main Streamlit app background transparent */
-        .stApp {
-            background: transparent !important;
-        }
-        /* Ensure content is readable */
-        .block-container {
-            background: rgba(14, 17, 23, 0.7); /* Semi-transparent dark backing for content */
-            border-radius: 15px;
-            padding: 2rem;
-            backdrop-filter: blur(5px);
+
+        @keyframes snow {
+            0% { background-position: 0 0, 0 0, 0 0; }
+            100% { background-position: 550px 1000px, 400px 400px, 300px 300px; }
         }
     </style>
-    <script>
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        let particlesArray;
-
-        let mouse = {
-            x: null,
-            y: null,
-            radius: (canvas.height/80) * (canvas.width/80)
-        }
-
-        window.addEventListener('mousemove',
-            function(event) {
-                mouse.x = event.x;
-                mouse.y = event.y;
-            }
-        );
-
-        class Particle {
-            constructor(x, y, directionX, directionY, size, color) {
-                this.x = x;
-                this.y = y;
-                this.directionX = directionX;
-                this.directionY = directionY;
-                this.size = size;
-                this.color = color;
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
-                ctx.fillStyle = '#00d2ff';
-                ctx.fill();
-            }
-            update() {
-                if (this.x > canvas.width || this.x < 0) {
-                    this.directionX = -this.directionX;
-                }
-                if (this.y > canvas.height || this.y < 0) {
-                    this.directionY = -this.directionY;
-                }
-
-                let dx = mouse.x - this.x;
-                let dy = mouse.y - this.y;
-                let distance = Math.sqrt(dx*dx + dy*dy);
-                if (distance < mouse.radius + this.size){
-                    if (mouse.x < this.x && this.x < canvas.width - this.size * 10) {
-                        this.x += 10;
-                    }
-                    if (mouse.x > this.x && this.x > this.size * 10) {
-                        this.x -= 10;
-                    }
-                    if (mouse.y < this.y && this.y < canvas.height - this.size * 10) {
-                        this.y += 10;
-                    }
-                    if (mouse.y > this.y && this.y > this.size * 10) {
-                        this.y -= 10;
-                    }
-                }
-                this.x += this.directionX;
-                this.y += this.directionY;
-                this.draw();
-            }
-        }
-
-        function init() {
-            particlesArray = [];
-            let numberOfParticles = (canvas.height * canvas.width) / 9000;
-            for (let i = 0; i < numberOfParticles; i++) {
-                let size = (Math.random() * 2) + 1;
-                let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
-                let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
-                let directionX = (Math.random() * 2) - 1;
-                let directionY = (Math.random() * 2) - 1;
-                let color = '#00d2ff';
-
-                particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
-            }
-        }
-
-        function connect(){
-            let opacityValue = 1;
-            for (let a = 0; a < particlesArray.length; a++) {
-                for (let b = a; b < particlesArray.length; b++) {
-                    let distance = (( particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x))
-                    + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
-                    if (distance < (canvas.width/7) * (canvas.height/7)) {
-                        opacityValue = 1 - (distance/20000);
-                        ctx.strokeStyle = 'rgba(0, 210, 255,' + opacityValue + ')';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
-                        ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
-                        ctx.stroke();
-                    }
-                }
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            ctx.clearRect(0, 0, innerWidth, innerHeight);
-
-            for (let i = 0; i < particlesArray.length; i++) {
-                particlesArray[i].update();
-            }
-            connect();
-        }
-
-        window.addEventListener('resize',
-            function(){
-                canvas.width = innerWidth;
-                canvas.height = innerHeight;
-                mouse.radius = ((canvas.height/80) * (canvas.height/80));
-                init();
-            }
-        );
-
-        window.addEventListener('mouseout',
-            function(){
-                mouse.x = undefined;
-                mouse.y = undefined;
-            }
-        )
-
-        init();
-        animate();
-    </script>
     """, unsafe_allow_html=True)
 
     # Load Lottie Animation (Traffic Car)
@@ -456,13 +343,24 @@ def main():
                 c1, c2 = st.columns(2)
                 
                 with c1:
-                    st.metric("Model Forecast", f"{int(prediction)} veh/hr")
-                    if prediction < 1000:
-                        st.info("Model: Light Traffic")
-                    elif prediction < 2000:
-                        st.warning("Model: Moderate Traffic")
+                    # If real data is available, use it as the primary "Forecast" for immediate future
+                    if real_traffic:
+                        # Estimate volume from congestion (inverse relationship approx)
+                        congestion = real_traffic['congestion_level']
+                        # Simple heuristic: Base volume + congestion factor
+                        estimated_real_vol = 500 + (congestion * 25) 
+                        
+                        st.metric("Current Traffic Volume", f"{int(estimated_real_vol)} veh/hr", delta="Live Data Active")
+                        prediction = estimated_real_vol # Override for logic below
                     else:
-                        st.error("Model: Heavy Traffic")
+                        st.metric("Model Forecast", f"{int(prediction)} veh/hr")
+
+                    if prediction < 1000:
+                        st.info("Status: Light Traffic")
+                    elif prediction < 2000:
+                        st.warning("Status: Moderate Traffic")
+                    else:
+                        st.error("Status: Heavy Traffic")
 
                 with c2:
                     if real_traffic:
@@ -473,13 +371,9 @@ def main():
                         st.metric("Real-time Speed", f"{real_speed} km/h")
                         
                         if congestion > 30:
-                            st.error(f"⚠️ Reality Check: High Congestion ({congestion}%)")
+                            st.error(f"⚠️ High Congestion ({congestion}%)")
                         else:
-                            st.success(f"✅ Reality Check: Flowing Well ({congestion}% Congestion)")
-                            
-                        # Adjust advice based on reality
-                        if congestion > 50 and prediction < 2000:
-                            st.warning("⚠️ Note: Real-time traffic is heavier than predicted due to live incidents.")
+                            st.success(f"✅ Flowing Well ({congestion}% Congestion)")
                     else:
                         st.info("Connect TomTom API for Real-time Accuracy Check")
 
