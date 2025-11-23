@@ -42,12 +42,32 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Traffic Forecast", "Live Map", "Incidents", "Live Monitor", "Model Analysis"])
 
+    # --- Global Location Management (Sidebar) ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📍 Location Settings")
+
+    # Initialize Global Location State
+    if "global_lat" not in st.session_state: st.session_state.global_lat = 40.7128
+    if "global_lon" not in st.session_state: st.session_state.global_lon = -74.0060
+
+    # GPS Tracker in Sidebar
+    from streamlit_geolocation import streamlit_geolocation
+    location = streamlit_geolocation()
+    if location and location['latitude'] is not None:
+        st.session_state.global_lat = location['latitude']
+        st.session_state.global_lon = location['longitude']
+        st.sidebar.success("Updated via GPS!")
+
+    # Manual Input (Linked to Global State)
+    # We use callbacks or just let the input update the state directly
+    st.session_state.global_lat = st.sidebar.number_input("Latitude", value=st.session_state.global_lat, format="%.4f")
+    st.session_state.global_lon = st.sidebar.number_input("Longitude", value=st.session_state.global_lon, format="%.4f")
+
     # Global API Key Management
     if "tomtom_key" not in st.session_state:
         st.session_state.tomtom_key = "SPcuC0jdg8et6Fjy6LKqgnUOwmPanb9z"
     
-    # Allow user to update key in sidebar
-    with st.sidebar.expander("⚙️ Settings"):
+    with st.sidebar.expander("⚙️ API Settings"):
         st.session_state.tomtom_key = st.text_input("TomTom API Key", value=st.session_state.tomtom_key, type="password")
 
     tp = load_model_and_predictor()
@@ -57,11 +77,14 @@ def main():
     from weather_integration import fetch_current_weather
     from tomtom_integration import fetch_real_time_incidents
     from datetime import datetime
-    from streamlit_geolocation import streamlit_geolocation
+
+    # Use global location variables for convenience
+    lat = st.session_state.global_lat
+    lon = st.session_state.global_lon
 
     if page == "Traffic Forecast":
         st.title("🚦 Real-time Traffic Forecast")
-        st.markdown("Predict traffic volume. Use sliders for **Future Predictions** or click below for **Right Now**.")
+        st.markdown(f"Predicting for **{lat:.4f}, {lon:.4f}**")
 
         col1, col2 = st.columns(2)
         
@@ -72,20 +95,8 @@ def main():
         if "f_wind" not in st.session_state: st.session_state.f_wind = 10
         if "f_precip" not in st.session_state: st.session_state.f_precip = 0.0
         if "f_vis" not in st.session_state: st.session_state.f_vis = 10
-        if "f_lat" not in st.session_state: st.session_state.f_lat = 40.7128
-        if "f_lon" not in st.session_state: st.session_state.f_lon = -74.0060
         
         with col2:
-            # GPS Tracker
-            location = streamlit_geolocation()
-            if location and location['latitude'] is not None:
-                st.session_state.f_lat = location['latitude']
-                st.session_state.f_lon = location['longitude']
-                st.success("📍 Location Updated!")
-
-            lat = st.number_input("Latitude", value=st.session_state.f_lat, format="%.4f", key="f_lat_input")
-            lon = st.number_input("Longitude", value=st.session_state.f_lon, format="%.4f", key="f_lon_input")
-            
             # Real-time Weather & Time Button
             if st.button("☁️ Fetch Real Weather & Time"):
                 # 1. Fetch Weather
@@ -147,18 +158,14 @@ def main():
 
     elif page == "Live Map":
         st.title("🗺️ Live Traffic Hotspots")
-        st.markdown("Visualizing traffic hotspots and congestion areas.")
-        
-        # Search for location
-        search_lat = st.number_input("Center Latitude", value=40.7128, format="%.4f")
-        search_lon = st.number_input("Center Longitude", value=-74.0060, format="%.4f")
+        st.markdown(f"Visualizing traffic hotspots near **{lat:.4f}, {lon:.4f}**")
         
         if st.button("Update Map"):
             # Fetch real incidents
-            real_incidents = fetch_real_time_incidents(st.session_state.tomtom_key, search_lat, search_lon)
+            real_incidents = fetch_real_time_incidents(st.session_state.tomtom_key, lat, lon)
             
             # Create map centered on search
-            m = folium.Map(location=[search_lat, search_lon], zoom_start=13)
+            m = folium.Map(location=[lat, lon], zoom_start=13)
             
             # Plot incidents
             if real_incidents:
@@ -185,14 +192,10 @@ def main():
 
     elif page == "Incidents":
         st.title("🚨 Active Incidents")
-        st.markdown("Real-time reports of accidents, roadworks, and hazards.")
-        
-        col_lat, col_lon = st.columns(2)
-        i_lat = col_lat.number_input("Latitude", value=40.7128, format="%.4f", key="inc_lat")
-        i_lon = col_lon.number_input("Longitude", value=-74.0060, format="%.4f", key="inc_lon")
+        st.markdown(f"Real-time reports near **{lat:.4f}, {lon:.4f}**")
         
         if st.button("Scan for Incidents"):
-            incidents = fetch_real_time_incidents(st.session_state.tomtom_key, i_lat, i_lon)
+            incidents = fetch_real_time_incidents(st.session_state.tomtom_key, lat, lon)
             if incidents:
                 for inc in incidents:
                     with st.expander(f"{inc['type']} - {inc['severity']} Severity"):
@@ -215,7 +218,7 @@ def main():
 
     elif page == "Live Monitor":
         st.title("📡 Live Traffic Monitor")
-        st.markdown("Real-time traffic data feed.")
+        st.markdown(f"Monitoring traffic at **{lat:.4f}, {lon:.4f}**")
         
         # Use global key
         api_key = st.session_state.tomtom_key
@@ -225,11 +228,6 @@ def main():
         else:
             st.success("Connected to TomTom Network. Fetching **Real-World Data**.")
             
-        # Location Input for Real Data
-        col_lat, col_lon = st.columns(2)
-        monitor_lat = col_lat.number_input("Monitor Latitude", value=40.7128, format="%.4f", key="mon_lat")
-        monitor_lon = col_lon.number_input("Monitor Longitude", value=-74.0060, format="%.4f", key="mon_lon")
-
         # Dashboard metrics
         col1, col2, col3, col4 = st.columns(4)
         metric_vol = col1.empty()
@@ -261,7 +259,7 @@ def main():
                 
                 # Fetch Real Data if Key is present
                 if api_key:
-                    real_data = fetch_real_time_traffic(api_key, monitor_lat, monitor_lon)
+                    real_data = fetch_real_time_traffic(api_key, lat, lon)
                     if real_data:
                         new_speed = real_data['current_speed']
                         # Estimate volume from congestion (inverse relationship approx)
