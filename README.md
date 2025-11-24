@@ -81,4 +81,4 @@ To unlock the full power of Real-Time features, you need a **TomTom API Key**.
 Contributions are welcome! Please fork the repo and submit a pull request.
 
 ---
-*Built with ❤️ by Antigravity*
+---
